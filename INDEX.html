@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Aplikasi Laporan Kerja</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{font-family:Arial;background:#f2f4f7;margin:0;padding:20px}
+.box{background:#fff;padding:20px;border-radius:8px;max-width:900px;margin:auto}
+.hidden{display:none}
+input,textarea,button{width:100%;padding:8px;margin:6px 0}
+button{background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer}
+button.gray{background:#6b7280}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{border:1px solid #ddd;padding:6px;font-size:13px}
+th{background:#eee}
+.flex{display:flex;gap:10px;align-items:end}
+.desc{max-width:250px;white-space:pre-wrap}
+.toast{position:fixed;bottom:20px;right:20px;background:#16a34a;color:#fff;padding:10px;border-radius:6px;display:none}
+@media print{
+  button,.no-print{display:none}
+  body{background:#fff}
+}
+</style>
+</head>
+
+<body>
+
+<div class="box" id="loginBox">
+  <h2>🔐 Login Aplikasi</h2>
+  <input id="user" placeholder="Username">
+  <input id="pass" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <div id="msg" style="color:red"></div>
+</div>
+
+<div class="box hidden" id="userBox">
+  <h2>🧑 Dashboard User</h2>
+  <label>Tanggal</label>
+  <input type="date" id="tanggal">
+  <input id="nama" placeholder="Nama">
+  <input id="divisi" placeholder="Divisi">
+  <input id="lokasi" placeholder="Lokasi">
+  <textarea id="deskripsi" placeholder="Deskripsi pekerjaan"></textarea>
+  <button onclick="kirimLaporan()">Simpan</button>
+  <button class="gray" onclick="logout()">Logout</button>
+</div>
+
+<div class="box hidden" id="adminBox">
+  <h2>📊 Dashboard Admin</h2>
+
+  <div class="flex no-print">
+    <div>
+      <label>Dari</label>
+      <input type="date" id="fromDate">
+    </div>
+    <div>
+      <label>Sampai</label>
+      <input type="date" id="toDate">
+    </div>
+    <div>
+      <label>Cari</label>
+      <input id="searchBox" placeholder="Nama / Lokasi">
+    </div>
+    <button onclick="applyFilter()">Filter</button>
+    <button class="gray" onclick="resetFilter()">Reset</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Tanggal</th><th>Nama</th><th>Divisi</th>
+        <th>Lokasi</th><th>Deskripsi</th><th>Status</th><th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <button style="margin-top:20px" onclick="exportPDF()">⬇ Export PDF</button>
+  <button class="gray" onclick="logout()">Logout</button>
+</div>
+
+<div class="toast" id="toast">Selesai</div>
+
+<script>
+const API_URL="https://script.google.com/macros/s/AKfycbx281-RSKWoHUOBAyO20ms5NMCKo9frZRrCIyVFGKTZBfECpQBPuPGOX3nts5bWl4FQ/exec";
+
+const loginBox=userBox=adminBox=null;
+let laporan=[],currentView=[];
+
+const $=id=>document.getElementById(id);
+const loginBoxEl=$("loginBox"),userBoxEl=$("userBox"),adminBoxEl=$("adminBox");
+const rows=$("rows"),toast=$("toast");
+
+function showToast(t){
+  toast.innerText=t;toast.style.display="block";
+  setTimeout(()=>toast.style.display="none",2000);
+}
+
+function login(){
+  fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"login",
+      username:$("user").value.toUpperCase(),
+      password:$("pass").value
+    })
+  }).then(r=>r.json()).then(d=>{
+    if(d.status==="ok"){
+      loginBoxEl.classList.add("hidden");
+      d.role==="ADMIN"?adminBoxEl.classList.remove("hidden"):userBoxEl.classList.remove("hidden");
+      if(d.role==="ADMIN") render();
+    }else $("msg").innerText="Login gagal";
+  });
+}
+
+function logout(){
+  location.reload();
+}
+
+function kirimLaporan(){
+  fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"add",
+      tanggal:$("tanggal").value,
+      nama:$("nama").value,
+      divisi:$("divisi").value,
+      lokasi:$("lokasi").value,
+      deskripsi:$("deskripsi").value
+    })
+  }).then(()=>showToast("Laporan tersimpan"));
+}
+
+function render(){
+  fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({action:"list"})
+  }).then(r=>r.json()).then(d=>{
+    laporan=d;currentView=d;draw();
+  });
+}
+
+function draw(){
+  rows.innerHTML="";
+  currentView.forEach(l=>{
+    rows.innerHTML+=`
+    <tr>
+      <td>${l.tanggal}</td>
+      <td>${l.nama}</td>
+      <td>${l.divisi}</td>
+      <td>${l.lokasi}</td>
+      <td class="desc">${l.deskripsi}</td>
+      <td>${l.status}</td>
+      <td>${l.status==="PENDING"
+        ?`<button onclick="approve(${l.id})">Approve</button>`:"✔"}
+      </td>
+    </tr>`;
+  });
+}
+
+function approve(id){
+  fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({action:"approve",row:id})
+  }).then(()=>{
+    showToast("Selesai");
+    render();
+  });
+}
+
+function applyFilter(){
+  currentView=laporan.filter(l=>{
+    let ok=true;
+    if($("searchBox").value)
+      ok&=(l.nama+l.lokasi).toLowerCase().includes($("searchBox").value.toLowerCase());
+    if($("fromDate").value)
+      ok&=(l.tanggal>=$("fromDate").value);
+    if($("toDate").value)
+      ok&=(l.tanggal<=$("toDate").value);
+    return ok;
+  });
+  draw();
+}
+
+function resetFilter(){
+  $("fromDate").value="";
+  $("toDate").value="";
+  $("searchBox").value="";
+  currentView=laporan;
+  draw();
+}
+
+function exportPDF(){
+  if(!currentView.length){alert("Tidak ada data");return;}
+  document.title="Laporan_"+($("searchBox").value||"SEMUA")+
+    "_"+($("fromDate").value||"")+
+    "_"+($("toDate").value||"");
+  window.print();
+}
+</script>
+</body>
+</html>
