@@ -2,215 +2,224 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aplikasi Laporan Kerja</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
-body{font-family:Arial;background:#f2f4f7;margin:0;padding:20px}
-.box{background:#fff;padding:20px;border-radius:8px;max-width:1000px;margin:auto}
-.hidden{display:none}
-input,textarea,button{width:100%;padding:8px;margin:6px 0}
-button{background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer}
-button.gray{background:#6b7280}
-table{width:100%;border-collapse:collapse;margin-top:15px}
-th,td{border:1px solid #ddd;padding:6px;font-size:13px}
-th{background:#eee}
-.desc{max-width:250px;white-space:pre-wrap}
-.toast{position:fixed;bottom:20px;right:20px;background:#16a34a;color:#fff;
-padding:10px;border-radius:6px;display:none;z-index:999}
+body{
+  font-family:Arial, sans-serif;
+  background:#f2f4f7;
+  margin:0;
+}
 
-/* FILTER GRID FIX */
+.container{
+  max-width:1100px;
+  margin:30px auto;
+  background:#fff;
+  padding:20px;
+  border-radius:8px;
+}
+
+.hidden{display:none}
+
+h2{margin-top:0}
+
+input,textarea,button{
+  padding:8px;
+  border:1px solid #ccc;
+  border-radius:4px;
+  width:100%;
+}
+
+button{
+  cursor:pointer;
+  border:none;
+}
+
+.blue{background:#2563eb;color:#fff}
+.gray{background:#6b7280;color:#fff}
+.green{background:#16a34a;color:#fff}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:15px;
+}
+
+th,td{
+  border:1px solid #ddd;
+  padding:8px;
+  text-align:left;
+}
+
+th{background:#f3f4f6}
+
+.no-print{}
+
+/* ===== FILTER RESPONSIVE ===== */
 .filter-grid{
   display:grid;
-  grid-template-columns: 1fr 1fr 1.5fr auto auto;
+  grid-template-columns:1fr 1fr 2fr auto auto;
   gap:10px;
-  margin-bottom:15px;
+  align-items:end;
 }
-.filter-grid button{height:38px;align-self:end}
-@media(max-width:768px){
-  .filter-grid{grid-template-columns:1fr}
+
+@media(max-width:900px){
+  .filter-grid{
+    grid-template-columns:1fr 1fr 1fr;
+  }
+}
+
+@media(max-width:600px){
+  .filter-grid{
+    grid-template-columns:1fr;
+  }
 }
 
 @media print{
-  button,.no-print{display:none}
-  body{background:#fff}
+  .no-print{display:none}
 }
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN -->
-<div class="box" id="loginBox">
+<div class="container" id="loginBox">
   <h2>🔐 Login Aplikasi</h2>
   <input id="user" placeholder="Username">
-  <input id="pass" type="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-  <div id="msg" style="color:red"></div>
+  <input id="pass" type="password" placeholder="Password" style="margin-top:8px">
+  <button class="blue" style="margin-top:10px" onclick="login()">Login</button>
+  <p id="loginMsg" style="color:red"></p>
 </div>
 
 <!-- USER -->
-<div class="box hidden" id="userBox">
-  <h2>🧑 Dashboard User</h2>
+<div class="container hidden" id="userBox">
+  <h2>📝 Laporan Kerja User</h2>
+
   <label>Tanggal</label>
-  <input type="date" id="tanggal">
-  <input id="nama" placeholder="Nama">
-  <input id="divisi" placeholder="Divisi">
-  <input id="lokasi" placeholder="Lokasi">
-  <textarea id="deskripsi" placeholder="Deskripsi pekerjaan"></textarea>
-  <button onclick="kirimLaporan()">Simpan</button>
-  <button class="gray" onclick="logout()">Logout</button>
+  <input type="date" id="uTanggal">
+
+  <label>Nama</label>
+  <input id="uNama">
+
+  <label>Divisi</label>
+  <input id="uDivisi">
+
+  <label>Lokasi</label>
+  <input id="uLokasi">
+
+  <label>Deskripsi</label>
+  <textarea id="uDesk"></textarea>
+
+  <button class="green" style="margin-top:10px" onclick="simpan()">Simpan</button>
+  <button class="gray" style="margin-top:10px" onclick="logout()">Logout</button>
 </div>
 
 <!-- ADMIN -->
-<div class="box hidden" id="adminBox">
+<div class="container hidden" id="adminBox">
   <h2>📊 Dashboard Admin</h2>
 
   <div class="filter-grid no-print">
     <div>
       <label>Dari</label>
-      <input type="date" id="fromDate">
+      <input type="date" id="from">
     </div>
     <div>
       <label>Sampai</label>
-      <input type="date" id="toDate">
+      <input type="date" id="to">
     </div>
     <div>
       <label>Cari (Nama / Lokasi)</label>
-      <input id="searchBox" placeholder="Nama atau Lokasi">
+      <input id="search">
     </div>
-    <button onclick="applyFilter()">Filter</button>
-    <button class="gray" onclick="resetFilter()">Reset</button>
+    <button class="blue" onclick="filter()">Filter</button>
+    <button class="gray" onclick="reset()">Reset</button>
   </div>
 
-  <table>
+  <table id="tabel">
     <thead>
       <tr>
-        <th>Tanggal</th><th>Nama</th><th>Divisi</th>
-        <th>Lokasi</th><th>Deskripsi</th><th>Status</th><th>Aksi</th>
+        <th>Tanggal</th>
+        <th>Nama</th>
+        <th>Divisi</th>
+        <th>Lokasi</th>
+        <th>Deskripsi</th>
+        <th>Status</th>
       </tr>
     </thead>
-    <tbody id="rows"></tbody>
+    <tbody></tbody>
   </table>
 
-  <button style="margin-top:20px" onclick="exportPDF()">⬇ Export PDF</button>
-  <button class="gray" onclick="logout()">Logout</button>
+  <button class="blue no-print" style="margin-top:15px" onclick="exportPDF()">⬇ Export PDF</button>
+  <button class="gray no-print" style="margin-top:10px" onclick="logout()">Logout</button>
 </div>
 
-<div class="toast" id="toast">Selesai</div>
-
 <script>
-const API_URL="https://script.google.com/macros/s/AKfycbx281-RSKWoHUOBAyO20ms5NMCKo9frZRrCIyVFGKTZBfECpQBPuPGOX3nts5bWl4FQ/exec";
-
-let laporan=[],currentView=[];
-const $=id=>document.getElementById(id);
-const rows=$("rows"),toast=$("toast");
-
-function showToast(t){
-  toast.innerText=t;toast.style.display="block";
-  setTimeout(()=>toast.style.display="none",2000);
-}
+let data = []
 
 function login(){
-  fetch(API_URL,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"login",
-      username:$("user").value.trim().toUpperCase(),
-      password:$("pass").value.trim()
-    })
-  }).then(r=>r.json()).then(d=>{
-    if(d.status==="ok"){
-      $("loginBox").classList.add("hidden");
-      d.role==="ADMIN"
-        ?$("adminBox").classList.remove("hidden")
-        :$("userBox").classList.remove("hidden");
-      if(d.role==="ADMIN") render();
-    }else $("msg").innerText="Login gagal";
-  });
+  let u=user.value,p=pass.value
+  if(u=="ADMIN" && p=="Master99"){
+    loginBox.classList.add("hidden")
+    adminBox.classList.remove("hidden")
+  }else if(p=="user123"){
+    loginBox.classList.add("hidden")
+    userBox.classList.remove("hidden")
+  }else{
+    loginMsg.innerText="Login gagal"
+  }
 }
 
-function logout(){location.reload();}
-
-function kirimLaporan(){
-  fetch(API_URL,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"add",
-      tanggal:$("tanggal").value,
-      nama:$("nama").value,
-      divisi:$("divisi").value,
-      lokasi:$("lokasi").value,
-      deskripsi:$("deskripsi").value
-    })
-  }).then(()=>showToast("Laporan tersimpan"));
+function logout(){
+  location.reload()
 }
 
-function render(){
-  fetch(API_URL,{
-    method:"POST",
-    body:JSON.stringify({action:"list"})
-  }).then(r=>r.json()).then(d=>{
-    laporan=d;currentView=d;draw();
-  });
+function simpan(){
+  data.push({
+    t:uTanggal.value,
+    n:uNama.value,
+    d:uDivisi.value,
+    l:uLokasi.value,
+    k:uDesk.value,
+    s:"Menunggu"
+  })
+  alert("Laporan tersimpan")
 }
 
-function draw(){
-  rows.innerHTML="";
-  currentView.forEach(l=>{
-    rows.innerHTML+=`
-    <tr>
-      <td>${l.tanggal}</td>
-      <td>${l.nama}</td>
-      <td>${l.divisi}</td>
-      <td>${l.lokasi}</td>
-      <td class="desc">${l.deskripsi}</td>
-      <td>${l.status}</td>
-      <td>${l.status==="PENDING"
-        ?`<button onclick="approve(${l.id})">Approve</button>`:"✔"}
-      </td>
-    </tr>`;
-  });
+function filter(){
+  let tb=document.querySelector("#tabel tbody")
+  tb.innerHTML=""
+  let f=from.value,t=to.value,s=search.value.toLowerCase()
+
+  data.filter(x=>{
+    return (!f||x.t>=f)&&(!t||x.t<=t)&&
+           (!s||x.n.toLowerCase().includes(s)||x.l.toLowerCase().includes(s))
+  }).forEach(x=>{
+    tb.innerHTML+=`<tr>
+      <td>${x.t}</td><td>${x.n}</td><td>${x.d}</td>
+      <td>${x.l}</td><td>${x.k}</td><td>${x.s}</td>
+    </tr>`
+  })
 }
 
-function approve(id){
-  fetch(API_URL,{
-    method:"POST",
-    body:JSON.stringify({action:"approve",row:id})
-  }).then(()=>{
-    showToast("Selesai");
-    render();
-  });
-}
-
-function applyFilter(){
-  currentView=laporan.filter(l=>{
-    let ok=true;
-    if($("searchBox").value)
-      ok&=(l.nama+l.lokasi).toLowerCase()
-        .includes($("searchBox").value.toLowerCase());
-    if($("fromDate").value)
-      ok&=(l.tanggal>=$("fromDate").value);
-    if($("toDate").value)
-      ok&=(l.tanggal<=$("toDate").value);
-    return ok;
-  });
-  draw();
-}
-
-function resetFilter(){
-  $("fromDate").value="";
-  $("toDate").value="";
-  $("searchBox").value="";
-  currentView=laporan;
-  draw();
+function reset(){
+  from.value=to.value=search.value=""
+  filter()
 }
 
 function exportPDF(){
-  if(!currentView.length){alert("Tidak ada data");return;}
-  document.title="Laporan_"+($("searchBox").value||"SEMUA_DATA");
-  window.print();
+  const opt={
+    margin:0.5,
+    filename:'Laporan_Kerja_IT.pdf',
+    html2canvas:{scale:2},
+    jsPDF:{orientation:'landscape'}
+  }
+  html2pdf().set(opt).from(adminBox).save()
 }
 </script>
+
 </body>
 </html>
