@@ -6,24 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-.filter-grid{
-  display:grid;
-  grid-template-columns: 1fr 1fr 1.5fr auto auto;
-  gap:10px;
-  margin-bottom:15px;
-}
-
-.filter-grid input{
-  width:100%;
-}
-
-@media(max-width:768px){
-  .filter-grid{
-    grid-template-columns: 1fr;
-  }
-}
-  body{font-family:Arial;background:#f2f4f7;margin:0;padding:20px}
-.box{background:#fff;padding:20px;border-radius:8px;max-width:900px;margin:auto}
+body{font-family:Arial;background:#f2f4f7;margin:0;padding:20px}
+.box{background:#fff;padding:20px;border-radius:8px;max-width:1000px;margin:auto}
 .hidden{display:none}
 input,textarea,button{width:100%;padding:8px;margin:6px 0}
 button{background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer}
@@ -31,9 +15,22 @@ button.gray{background:#6b7280}
 table{width:100%;border-collapse:collapse;margin-top:15px}
 th,td{border:1px solid #ddd;padding:6px;font-size:13px}
 th{background:#eee}
-.flex{display:flex;gap:10px;align-items:end}
 .desc{max-width:250px;white-space:pre-wrap}
-.toast{position:fixed;bottom:20px;right:20px;background:#16a34a;color:#fff;padding:10px;border-radius:6px;display:none}
+.toast{position:fixed;bottom:20px;right:20px;background:#16a34a;color:#fff;
+padding:10px;border-radius:6px;display:none;z-index:999}
+
+/* FILTER GRID FIX */
+.filter-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr 1.5fr auto auto;
+  gap:10px;
+  margin-bottom:15px;
+}
+.filter-grid button{height:38px;align-self:end}
+@media(max-width:768px){
+  .filter-grid{grid-template-columns:1fr}
+}
+
 @media print{
   button,.no-print{display:none}
   body{background:#fff}
@@ -43,6 +40,7 @@ th{background:#eee}
 
 <body>
 
+<!-- LOGIN -->
 <div class="box" id="loginBox">
   <h2>🔐 Login Aplikasi</h2>
   <input id="user" placeholder="Username">
@@ -51,6 +49,7 @@ th{background:#eee}
   <div id="msg" style="color:red"></div>
 </div>
 
+<!-- USER -->
 <div class="box hidden" id="userBox">
   <h2>🧑 Dashboard User</h2>
   <label>Tanggal</label>
@@ -63,10 +62,11 @@ th{background:#eee}
   <button class="gray" onclick="logout()">Logout</button>
 </div>
 
+<!-- ADMIN -->
 <div class="box hidden" id="adminBox">
   <h2>📊 Dashboard Admin</h2>
 
-  <div class="flex no-print">
+  <div class="filter-grid no-print">
     <div>
       <label>Dari</label>
       <input type="date" id="fromDate">
@@ -76,8 +76,8 @@ th{background:#eee}
       <input type="date" id="toDate">
     </div>
     <div>
-      <label>Cari</label>
-      <input id="searchBox" placeholder="Nama / Lokasi">
+      <label>Cari (Nama / Lokasi)</label>
+      <input id="searchBox" placeholder="Nama atau Lokasi">
     </div>
     <button onclick="applyFilter()">Filter</button>
     <button class="gray" onclick="resetFilter()">Reset</button>
@@ -102,11 +102,8 @@ th{background:#eee}
 <script>
 const API_URL="https://script.google.com/macros/s/AKfycbx281-RSKWoHUOBAyO20ms5NMCKo9frZRrCIyVFGKTZBfECpQBPuPGOX3nts5bWl4FQ/exec";
 
-const loginBox=userBox=adminBox=null;
 let laporan=[],currentView=[];
-
 const $=id=>document.getElementById(id);
-const loginBoxEl=$("loginBox"),userBoxEl=$("userBox"),adminBoxEl=$("adminBox");
 const rows=$("rows"),toast=$("toast");
 
 function showToast(t){
@@ -119,21 +116,21 @@ function login(){
     method:"POST",
     body:JSON.stringify({
       action:"login",
-      username:$("user").value.toUpperCase(),
-      password:$("pass").value
+      username:$("user").value.trim().toUpperCase(),
+      password:$("pass").value.trim()
     })
   }).then(r=>r.json()).then(d=>{
     if(d.status==="ok"){
-      loginBoxEl.classList.add("hidden");
-      d.role==="ADMIN"?adminBoxEl.classList.remove("hidden"):userBoxEl.classList.remove("hidden");
+      $("loginBox").classList.add("hidden");
+      d.role==="ADMIN"
+        ?$("adminBox").classList.remove("hidden")
+        :$("userBox").classList.remove("hidden");
       if(d.role==="ADMIN") render();
     }else $("msg").innerText="Login gagal";
   });
 }
 
-function logout(){
-  location.reload();
-}
+function logout(){location.reload();}
 
 function kirimLaporan(){
   fetch(API_URL,{
@@ -190,7 +187,8 @@ function applyFilter(){
   currentView=laporan.filter(l=>{
     let ok=true;
     if($("searchBox").value)
-      ok&=(l.nama+l.lokasi).toLowerCase().includes($("searchBox").value.toLowerCase());
+      ok&=(l.nama+l.lokasi).toLowerCase()
+        .includes($("searchBox").value.toLowerCase());
     if($("fromDate").value)
       ok&=(l.tanggal>=$("fromDate").value);
     if($("toDate").value)
@@ -210,12 +208,9 @@ function resetFilter(){
 
 function exportPDF(){
   if(!currentView.length){alert("Tidak ada data");return;}
-  document.title="Laporan_"+($("searchBox").value||"SEMUA")+
-    "_"+($("fromDate").value||"")+
-    "_"+($("toDate").value||"");
+  document.title="Laporan_"+($("searchBox").value||"SEMUA_DATA");
   window.print();
 }
 </script>
 </body>
 </html>
-
